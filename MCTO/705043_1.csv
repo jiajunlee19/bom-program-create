@@ -1,0 +1,17 @@
+Program :		ZPR_BOM_EXPLOSION							Micron SemiAsiaOP Pte Ltd					Date :		01/11/2023
+User    :		JIAJUNLEE								BOM Explosion Report				Time :		14:32:16
+Page    :		1												Zone :		UTC+8
+
+								This report is for Material:
+							000000000000705043 MTFDKCC30T7TGH-1BC SG37
+
+
+	Material		Description
+	Object no.			   Quantity	Un	Material Description					Reference Designator	Manufacturer Part No.	Mfg Name		Change No.
+
+	705043		MTFDKCC30T7TGH-1BC
+	612171			32,000.000	EA	MT29FB8T08EALAAM5-QK:E-M002					U5-U6,U10-U12,U16-U17,U19,U22-U27				500023912545
+											U31-U32,U34-U35,U38-U40,U45-U47,U49-U52
+											U54-U55,U58-U59
+	598559			 9,000.000	EA	MT40A4G8NEA-062E:F-M002					U8,U13,U15,U21,U36,U41,U43,U48,U53				500023912545
+	590-624363			 1,000.000	EA	MTFDKCC30T7TGH-1BC1ZABYY:M0AS									500023912545
