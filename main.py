@@ -81,7 +81,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
     log.debug(f"\n{df_input.head(5).to_string(index=False)}")
 
     log.debug('Dropping null rows...')
-    df_input.dropna(how='any', subset=['BOM_MASTER', 'MCTO_MASTER', 'PV_MASTER', 'PNP_PROGRAM_SIDE1_MASTER', 'PNP_PROGRAM_SIDE2_MASTER', 'BOM_NEW', 'MCTO_NEW', 'PV_NEW', 'PNP_PROGRAM_SIDE1_NEW', 'PNP_PROGRAM_SIDE2_NEW'], inplace=True)
+    df_input.dropna(how='any', subset=['BOM_MASTER', 'MCTO_MASTER', 'PV_MASTER', 'PNP_PROGRAM_SIDE1_MASTER', 'BOM_NEW', 'MCTO_NEW', 'PV_NEW', 'PNP_PROGRAM_SIDE1_NEW'], inplace=True)
     log.debug(f"\n{df_input.head(5).to_string(index=False)}")
 
     if len(df_input) < 1:
