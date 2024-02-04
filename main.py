@@ -198,8 +198,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                 log.warning(f"Designators are not expanded, skipping {file}...")
                 continue
 
-            df['QUANTITY'] = 1
-
             log.debug('Dropping duplicates...')
             df.drop_duplicates(subset=['BOM', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR'], keep='last', inplace=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
@@ -293,8 +291,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                 log.warning(f"Designators are not expanded, skipping {file}...")
                 continue
 
-            df['QUANTITY'] = 1
-
             log.debug('Dropping duplicates...')
             df.drop_duplicates(subset=['MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR'], keep='last', inplace=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
@@ -326,7 +322,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
         if df_590['DESIGNATOR'].str.contains('-').any():
             raise ConnectionAbortedError ('Designators are not expanded, force exiting application...')
 
-        df_590['QUANTITY'] = 1
         log.debug(f"\n{df_590.head(5).to_string(index=False)}")
 
         query_MCTO = '''
@@ -340,7 +335,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
         if df_MCTO['DESIGNATOR'].str.contains('-').any():
             raise ConnectionAbortedError ('Designators are not expanded, force exiting application...')
         
-        df_MCTO['QUANTITY'] = 1
         log.debug(f"\n{df_MCTO.head(5).to_string(index=False)}")
 
         if connection is not None:
