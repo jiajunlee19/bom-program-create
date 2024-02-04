@@ -10,6 +10,13 @@ import pandas as pd
 from smtplib import SMTP
 import uuid
 
+def flatten(l):
+    '''flatten nested list or tuple into single-level'''
+    for i in l:
+        if isinstance(i, tuple) or isinstance(i, list):
+            yield from flatten(i)
+        else:
+            yield i
 
 def makeDirs(folder):
     '''create dirs if not exists'''
