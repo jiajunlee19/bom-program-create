@@ -538,10 +538,10 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             log.info(f"Total of {len(designatorsList)} line item(s) to be processed for row #{i+1} (BOM_NEW, MCTO_NEW, PV_NEW) = {info_new}")
 
             # Find for selected_program
-            if df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER'] == '':
-                selected_program = set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER'])
-            else:
-                selected_program = set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER']).union(set(df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER']))
+            try:
+                selected_program = (set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER']).union(set(df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER']))).remove('')
+            except KeyError:
+                selected_program = (set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER']).union(set(df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER'])))
 
             # log.debug('Hardcoding selected files...')
             # selected_program = ['3440CB-PD0-M5-IT', '3440CB-SD0-M5-IT']
