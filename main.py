@@ -360,7 +360,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
         log.info('Running query_MCTO...')
         query_MCTO = '''
-                    SELECT bh.SAP_mat_no as BOM, bi.alt_BOM_type as PV,
+                    SELECT REPLACE(bh.SAP_mat_no, '000000000000', '') as MCTO, bi.alt_BOM_type as PV,
                         bi.compnt_no as COMPONENT, bi.compnt_desc as COMPDESC, 
                         CASE
                             WHEN CAST(bi.compnt_qty as INT) >= 1000 THEN CAST(CAST(bi.compnt_qty as INT)/1000 as INT)
@@ -370,7 +370,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                     FROM [SAP_PP].[dbo].[SAP_BOM_item] bi
                     inner join [SAP_PP].[dbo].[SAP_BOM_header] bh on bi.BOM_no = bh.BOM_no and bi.alt_BOM_type = bh.alt_BOM_type
                     inner join [SAP_PP].[dbo].[material_master] mm on bh.SAP_mat_no = mm.material_no
-                    where mm.material_group_code in ('MCTO', '002') and bh.SAP_mat_no in ({0});
+                    where mm.material_group_code in ('MCTO', '002') and REPLACE(bh.SAP_mat_no, '000000000000', '') in ({0});
                 '''
         query_MCTO = query_MCTO.format(','.join('?' * len(selected_MCTO)))
         params_MCTO = tuple(flatten(selected_MCTO))
