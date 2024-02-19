@@ -80,22 +80,19 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
     df_input = pd.read_excel(path_bom, sheet_name='BOM')
     log.debug(f"\n{df_input.head(5).to_string(index=False)}")
 
+    log.debug('Trimming all input columns...')
+    for input_column in input_columns:
+        df_input[input_column] = df_input[input_column].astype(str)
+        df_input[input_column] = df_input[input_column].str.strip().str.upper().str.lstrip('0')
+    df_input = df_input.replace([' '], ['']).replace(['NAN'], ['']).replace([''], [np.NaN], regex=True)
+    log.debug(f"\n{df_input.head(5).to_string(index=False)}")
+
     log.debug('Dropping null rows...')
     df_input.dropna(how='any', subset=['BOM_MASTER', 'MCTO_MASTER', 'PV_MASTER', 'PNP_PROGRAM_SIDE1_MASTER', 'BOM_NEW', 'MCTO_NEW', 'PV_NEW', 'PNP_PROGRAM_SIDE1_NEW'], inplace=True)
     log.debug(f"\n{df_input.head(5).to_string(index=False)}")
 
     if len(df_input) < 1:
         raise ConnectionAbortedError ('There is no input to be processed, force exiting application...')
-
-    log.debug('Converting all input columns to str...')
-    df_input.replace(np.NaN, '', regex=True, inplace=True)
-    df_input = df_input[input_columns].astype(str)
-    log.debug(f"\n{df_input.head(5).to_string(index=False)}")
-
-    log.debug('Trimming all input columns...')
-    for input_column in input_columns:
-        df_input[input_column] = df_input[input_column].str.strip().str.upper()
-    log.debug(f"\n{df_input.head(5).to_string(index=False)}")
 
     log.debug('Dropping duplicates...')
     df_input.drop_duplicates(subset=['BOM_MASTER', 'MCTO_MASTER', 'PV_MASTER', 'PNP_PROGRAM_SIDE1_MASTER', 'PNP_PROGRAM_SIDE2_MASTER', 'BOM_NEW', 'MCTO_NEW', 'PV_NEW', 'PNP_PROGRAM_SIDE1_NEW', 'PNP_PROGRAM_SIDE2_NEW'], keep='first', inplace=True)
@@ -107,6 +104,9 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
     selected_MCTO = set(df_input['MCTO_MASTER']).union(set(df_input['MCTO_NEW']))
     log.info(f"Selected_590 = {selected_590}")
     log.info(f"Selected_MCTO = {selected_MCTO}")
+
+    bom_columns = ['BOM', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR']
+    mcto_columns = ['MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR']
 
     if SAP_SOURCE == 'manual':
         log.info('Scanning files_590 and files_MCTO...')
@@ -136,22 +136,20 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             df = df.rename(columns={'Object no.':'COMPONENT', 'Quantity':'QUANTITY', 'Material Description':'COMPDESC', 'Reference Designator':'DESIGNATOR'})
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Trimming all input columns...')
-            input_columns = ['COMPONENT', 'QUANTITY', 'COMPDESC', 'DESIGNATOR']
-            for input_column in input_columns:
-                df[input_column] = df[input_column].str.strip().str.upper()
-            log.debug(f"\n{df.head(5).to_string(index=False)}")
-
             log.debug('Create BOM column with component starting with 590...')
             df['BOM'] = np.where(df['COMPONENT'].str.startswith('590'), df['COMPONENT'], np.NaN)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Front-filling BOM...')
-            df['BOM'].ffill(inplace=True)
+            log.debug('Trimming all bom columns...')
+            df = df[bom_columns]
+            for input_column in bom_columns:
+                df[input_column] = df[input_column].astype(str)
+                df[input_column] = df[input_column].str.strip().str.upper().str.lstrip('0')
+            df = df.replace([' '], ['']).replace(['NAN'], ['']).replace([''], [np.NaN], regex=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Replacing empty with NaN...')
-            df = df.replace([' '], ['']).replace([''], [np.NaN], regex=True)
+            log.debug('Front-filling BOM...')
+            df['BOM'].ffill(inplace=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             log.debug('Removing rows with null designator...')
@@ -176,14 +174,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             df['QUANTITY'] = df['QUANTITY'].fillna('0').astype(int)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Stripping all string columns...')
-            df['BOM'] = df['BOM'].str.strip()
-            df['COMPONENT'] = df['COMPONENT'].str.strip()
-            df['COMPDESC'] = df['COMPDESC'].str.strip()
-            df['DESIGNATOR'] = df['DESIGNATOR'].str.strip()
-            df = df[['BOM', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR']]
-            log.debug(f"\n{df.head(5).to_string(index=False)}")
-
             log.debug('Grouping designator...')
             df = df.groupby(['BOM', 'COMPONENT', 'COMPDESC', 'QUANTITY'])['DESIGNATOR'].apply(','.join).reset_index()
             log.debug(f"\n{df.head(5).to_string(index=False)}")
@@ -193,7 +183,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             log.debug('Expanding designator series...')
-            df['DESIGNATOR'] = df['DESIGNATOR'].apply(ExpandSeries)
+            df['DESIGNATOR'] = df['DESIGNATOR'].apply(ExpandSeries).str.replace(' ', '')
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             if df['DESIGNATOR'].str.contains('-').any():
@@ -229,26 +219,24 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             df = df.rename(columns={'Object no.':'COMPONENT', 'Quantity':'QUANTITY', 'Material Description':'COMPDESC', 'Reference Designator':'DESIGNATOR'})
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Trimming all input columns...')
-            input_columns = ['COMPONENT', 'QUANTITY', 'COMPDESC', 'DESIGNATOR']
-            for input_column in input_columns:
-                df[input_column] = df[input_column].str.strip().str.upper()
-            log.debug(f"\n{df.head(5).to_string(index=False)}")
-
             log.debug('Create MCTO column with component not null and compdesc, quantity, designator are null...')
             df['MCTO'] = np.where(~(df['COMPONENT'].isna()) & (df['COMPDESC'].isnull()) & (df['QUANTITY'].isnull()) & (df['DESIGNATOR'].isnull()), df['COMPONENT'], np.NaN)
-            log.debug(f"\n{df.head(5).to_string(index=False)}")
-
-            log.debug('Front-filling MCTO...')
-            df['MCTO'].ffill(inplace=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             log.debug('Adding PV columns...')
             df['PV'] = PV
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Replacing empty with NaN...')
-            df = df.replace([' '], ['']).replace([''], [np.NaN], regex=True)
+            log.debug('Trimming all mcto columns...')
+            df = df[mcto_columns]
+            for input_column in mcto_columns:
+                df[input_column] = df[input_column].astype(str)
+                df[input_column] = df[input_column].str.strip().str.upper().str.lstrip('0')
+            df = df.replace([' '], ['']).replace(['NAN'], ['']).replace([''], [np.NaN], regex=True)
+            log.debug(f"\n{df.head(5).to_string(index=False)}")
+
+            log.debug('Front-filling MCTO...')
+            df['MCTO'].ffill(inplace=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             log.debug('Removing rows with null designator...')
@@ -269,14 +257,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             df['QUANTITY'] = df['QUANTITY'].fillna('0').astype(int)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
-            log.debug('Stripping all string columns...')
-            df['MCTO'] = df['MCTO'].str.strip()
-            df['COMPONENT'] = df['COMPONENT'].str.strip()
-            df['COMPDESC'] = df['COMPDESC'].str.strip()
-            df['DESIGNATOR'] = df['DESIGNATOR'].str.strip()
-            df = df[['MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR']]
-            log.debug(f"\n{df.head(5).to_string(index=False)}")
-
             log.debug('Grouping designator...')
             df = df.groupby(['MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY'])['DESIGNATOR'].apply(','.join).reset_index()
             log.debug(f"\n{df.head(5).to_string(index=False)}")
@@ -286,7 +266,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             log.debug('Expanding designator series...')
-            df['DESIGNATOR'] = df['DESIGNATOR'].apply(ExpandSeries)
+            df['DESIGNATOR'] = df['DESIGNATOR'].apply(ExpandSeries).str.replace(' ', '')
             log.debug(f"\n{df.head(5).to_string(index=False)}")
 
             if df['DESIGNATOR'].str.contains('-').any():
@@ -300,7 +280,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             log.debug(f"Concating {str(len(df))} rows into df_MCTO...")
             df_MCTO = pd.concat([df_MCTO, df], ignore_index=True)
             log.debug(f"\n{df.head(5).to_string(index=False)}")
-        log.info(f"Total of {str(len(df_MCTO))} rows detected in BOM_MCTO files.")
+        log.info(f"Total of {str(len(df_MCTO))} rows detected in MCTO files.")
 
     else:
         log.info('Loading SAP database...')
@@ -321,7 +301,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                             WHEN CAST(bi.compnt_qty as INT) >= 1000 THEN CAST(CAST(bi.compnt_qty as INT)/1000 as INT)
                             ELSE CAST(bi.compnt_qty as INT)
                         END as QUANTITY, 
-                        bi.item_text as DESIGNATOR, 'BOM_590' as 'GROUP' 
+                        bi.item_text as DESIGNATOR
                     FROM [SAP_PP].[dbo].[SAP_BOM_item] bi
                     inner join [SAP_PP].[dbo].[SAP_BOM_header] bh on bi.BOM_no = bh.BOM_no
                     inner join [SAP_PP].[dbo].[material_master] mm on bh.SAP_mat_no = mm.material_no
@@ -335,10 +315,16 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             raise ConnectionAbortedError ('Failed to run query_BOM_590, force exiting application...')
         log.info(f"Total of {str(len(df_590))} rows detected in query_BOM_590.")
 
+        log.debug('Trimming all bom columns...')
+        df_590 = df_590[bom_columns]
+        for input_column in bom_columns:
+            df_590[input_column] = df_590[input_column].astype(str)
+            df_590[input_column] = df_590[input_column].str.strip().str.upper().str.lstrip('0')
+        df_590 = df_590.replace([' '], ['']).replace(['NAN'], ['']).replace([''], [np.NaN], regex=True)
+        log.debug(f"\n{df_590.head(5).to_string(index=False)}")
+
         log.debug('Dropping null rows...')
-        df_590['DESIGNATOR'] = df_590['DESIGNATOR'].str.replace(' ', '')
-        df_590.replace('', np.NaN, inplace=True)
-        df_590.dropna(how='any', subset=['BOM', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR', 'GROUP'], inplace=True)
+        df_590.dropna(how='any', subset=bom_columns, inplace=True)
         log.debug(f"\n{df_590.head(5).to_string(index=False)}")
 
         log.debug(f"Removing rows with comp_prefix = {exclude_comp_prefix}...")
@@ -350,7 +336,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
         log.debug(f"\n{df_590.head(5).to_string(index=False)}")
 
         log.debug('Expanding designator series...')
-        df_590['DESIGNATOR'] = df_590['DESIGNATOR'].apply(ExpandSeries)
+        df_590['DESIGNATOR'] = df_590['DESIGNATOR'].apply(ExpandSeries).str.replace(' ', '')
 
         if df_590['DESIGNATOR'].str.contains('-').any():
             raise ConnectionAbortedError ('Designators are not expanded, force exiting application...')
@@ -366,7 +352,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                             WHEN CAST(bi.compnt_qty as INT) >= 1000 THEN CAST(CAST(bi.compnt_qty as INT)/1000 as INT)
                             ELSE CAST(bi.compnt_qty as INT)
                         END as QUANTITY, 
-                        bi.item_text as DESIGNATOR, 'MCTO' as 'GROUP' 
+                        bi.item_text as DESIGNATOR
                     FROM [SAP_PP].[dbo].[SAP_BOM_item] bi
                     inner join [SAP_PP].[dbo].[SAP_BOM_header] bh on bi.BOM_no = bh.BOM_no and bi.alt_BOM_type = bh.alt_BOM_type
                     inner join [SAP_PP].[dbo].[material_master] mm on bh.SAP_mat_no = mm.material_no
@@ -380,10 +366,16 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             raise ConnectionAbortedError ('Failed to run query_MCTO, force exiting application...')
         log.info(f"Total of {str(len(df_MCTO))} rows detected in query_MCTO.")
 
+        log.debug('Trimming all mcto columns...')
+        df_MCTO = df_MCTO[mcto_columns]
+        for input_column in mcto_columns:
+            df_MCTO[input_column] = df_MCTO[input_column].astype(str)
+            df_MCTO[input_column] = df_MCTO[input_column].str.strip().str.upper().str.lstrip('0')
+        df_MCTO = df_MCTO.replace([' '], ['']).replace(['NAN'], ['']).replace([''], [np.NaN], regex=True)
+        log.debug(f"\n{df_MCTO.head(5).to_string(index=False)}")
+
         log.debug('Dropping null rows...')
-        df_MCTO['DESIGNATOR'] = df_MCTO['DESIGNATOR'].str.replace(' ', '')
-        df_MCTO.replace('', np.NaN, inplace=True)
-        df_MCTO.dropna(how='any', subset=['MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR', 'GROUP'], inplace=True)
+        df_MCTO.dropna(how='any', subset=mcto_columns, inplace=True)
         log.debug(f"\n{df_MCTO.head(5).to_string(index=False)}")
 
         log.debug(f"Removing rows with comp_prefix = {exclude_comp_prefix}...")
@@ -391,7 +383,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
         log.debug(f"\n{df_MCTO.head(5).to_string(index=False)}")
 
         log.debug('Expanding designator series...')
-        df_MCTO['DESIGNATOR'] = df_MCTO['DESIGNATOR'].apply(ExpandSeries)
+        df_MCTO['DESIGNATOR'] = df_MCTO['DESIGNATOR'].apply(ExpandSeries).str.replace(' ', '')
 
         if df_MCTO['DESIGNATOR'].str.contains('-').any():
             raise ConnectionAbortedError ('Designators are not expanded, force exiting application...')
@@ -411,14 +403,14 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
     df_590_MCTO_PV.drop_duplicates(subset=['BOM', 'MCTO', 'PV'], keep='last', inplace=True)
     log.debug(f"\n{df_590_MCTO_PV.head(5).to_string(index=False)}")
 
-    log.debug('Left joining df_590 to df_590_MCTO_PV on BOM and drop duplicates...')
+    log.debug('Inner joining df_590 to df_590_MCTO_PV on BOM and drop duplicates...')
     df_590_all = df_590.merge(df_590_MCTO_PV, how='inner', left_on='BOM', right_on='BOM')
     df_590_all['GROUP'] = 'BOM_590' 
     df_590_all = df_590_all[['BOM', 'MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR', 'GROUP']]
     df_590_all.drop_duplicates(subset=['BOM', 'MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR', 'GROUP'], keep='last', inplace=True)
     log.debug(f"\n{df_590_all.head(5).to_string(index=False)}")
 
-    log.debug('Left joining df_MCTO to df_590_MCTO_PV on MCTO and drop duplicates...')
+    log.debug('Inner joining df_MCTO to df_590_MCTO_PV on MCTO and drop duplicates...')
     df_MCTO_all = df_MCTO.merge(df_590_MCTO_PV, how='inner', left_on=['MCTO', 'PV'], right_on=['MCTO', 'PV'])
     df_MCTO_all['GROUP'] = 'MCTO'
     df_MCTO_all = df_MCTO_all[['BOM', 'MCTO', 'PV', 'COMPONENT', 'COMPDESC', 'QUANTITY', 'DESIGNATOR', 'GROUP']]
@@ -480,12 +472,10 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
             log.debug('Spliting df_master designators into rows...')
             df_master = split_into_rows(df_master, column='DESIGNATOR')
-            df_master['DESIGNATOR'] = df_master['DESIGNATOR'].str.strip().str.upper()
             log.debug(f"\n{df_master.head(5).to_string(index=False)}")
 
             log.debug('Spliting df_new designators into rows...')
             df_new = split_into_rows(df_new, column='DESIGNATOR')
-            df_new['DESIGNATOR'] = df_new['DESIGNATOR'].str.strip().str.upper()
             log.debug(f"\n{df_new.head(5).to_string(index=False)}")
 
             log.debug('Creating df_master_vs_new...')
