@@ -54,6 +54,7 @@ Below are the limitations that cannot be handled. Warning will be raised as such
 ### Test Cases
 Below are the passing test cases, using [590-624661](BOM_590/590-624661.csv) as Master BOM.
 References: [BOM_590](BOM_590/) and [recipe-bom-new](recipe-bom-new/)
+
 | New BOM                              | Differences from Master BOM | Result                                                   |
 | :---                                 | :-------------------------  | :----                                                    |
 | [590-624662](BOM_590/590-624662.csv) | No differences              | Generated new recipes, exactly same with master recipes. |
