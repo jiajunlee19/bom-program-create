@@ -529,9 +529,9 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
             # Find for selected_program
             try:
-                selected_program = (set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER']).union(set(df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER']))).remove('')
-            except KeyError:
-                selected_program = (set(df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER']).union(set(df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER'])))
+                selected_program = [df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER'], df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER']].remove('')
+            except (KeyError, ValueError):
+                selected_program = [df_input.loc[i, 'PNP_PROGRAM_SIDE1_MASTER'], df_input.loc[i, 'PNP_PROGRAM_SIDE2_MASTER']]
 
             # log.debug('Hardcoding selected files...')
             # selected_program = ['3440CB-PD0-M5-IT', '3440CB-SD0-M5-IT']
