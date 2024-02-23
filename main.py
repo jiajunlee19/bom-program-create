@@ -573,8 +573,6 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                 log.debug(f"file_ext = {file_ext}")
 
                 xmldata = file
-                prstree = ETree.parse(xmldata)
-                root = prstree.getroot()
             
                 # Loop through line items to be processed
                 for j in range(len(designatorsList)):
@@ -592,6 +590,11 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
                     # Handle .pp7 file
                     if file_ext.lower() == 'pp7':
+
+                        ETree.register_namespace('', 'http://api.assembleon.com/pp7/v1')
+                        prstree = ETree.parse(xmldata)
+                        root = prstree.getroot()
+
                         pp_url = '{http://api.assembleon.com/pp7/v1}'
                         log.debug(f"Setting pp_url to {pp_url}...")
 
@@ -753,6 +756,11 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
                     # Handle .pp file
                     else:
+
+                        ETree.register_namespace('', 'http://api.assembleon.com/pp/v2')
+                        prstree = ETree.parse(xmldata)
+                        root = prstree.getroot()
+
                         pp_url = '{http://api.assembleon.com/pp/v2}'
                         log.debug(f"Setting pp_url to {pp_url}...")
 
@@ -926,7 +934,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                 output_path = f"{output_folder}\\{sPROGRAM_NAME}.{file_ext}"
                 log.info(f"Writing into {output_path}...")
                 with open(f"{output_path}", 'wb') as f:
-                    prstree.write(f)
+                    prstree.write(f, method='xml', xml_declaration=True, encoding='utf-8')
 
         except AssertionError as e:
             log.warning(f"{str(e)}")
