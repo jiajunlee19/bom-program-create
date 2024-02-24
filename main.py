@@ -6,6 +6,7 @@ try:
     import pandas as pd
     import xml.etree.ElementTree as ETree
     import numpy as np
+    import zipfile
     from utils.logger import logger_init
     from utils.Common_Functions_64 import removeExtraDelimiter, digit_to_nondigit, split_into_rows, ExpandSeries, delete_file, flatten
 
@@ -544,7 +545,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
             # Recursively call scandir inclusive of subfolders for filename matching
             def scan_dir_file(path):
                 for f in os.scandir(path):
-                    if f.is_file() and (f.name[-3:].lower() == '.pp' or f.name[-4:].lower() == '.pp7') and any (matcher in f.name for matcher in selected_program):
+                    if f.is_file() and (f.name[-3:].lower() == '.pp' or f.name[-4:].lower() == '.pp7' or f.name[-8:].lower() == '.pp7.zip') and any (matcher in f.name for matcher in selected_program):
                         yield f.path
                     elif f.is_dir():
                         yield from scan_dir_file(f.path)
@@ -566,10 +567,15 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                 filename = file.rsplit('\\', 1)[-1]
                 log.debug(f"filename = {filename}")
 
-                filename_without_ext = filename.rsplit('.', 1)[0]
-                log.debug(f"filename_without_ext = {filename_without_ext}")
+                if filename[-8:].lower() == '.pp7.zip':
+                    file_ext = 'pp7.zip'
+                    filename_without_ext = filename.rsplit('.pp7.zip', 1)[0]
 
-                file_ext = filename.rsplit('.', 1)[-1]
+                else:
+                    filename_without_ext = filename.rsplit('.', 1)[0]
+                    file_ext = filename.rsplit('.', 1)[-1]
+
+                log.debug(f"filename_without_ext = {filename_without_ext}")
                 log.debug(f"file_ext = {file_ext}")
 
                 xmldata = file
@@ -755,7 +761,7 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
 
                     # Handle .pp file
-                    else:
+                    elif file_ext.lower() == 'pp':
 
                         ETree.register_namespace('', 'http://api.assembleon.com/pp/v2')
                         prstree = ETree.parse(xmldata)
@@ -926,15 +932,56 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
                                 feederToRemove = set()
 
 
-                # Write to a new file
+                # Make output folder
                 output_folder = f"{path_main}\\recipe-bom-new\\{df_input.loc[i, 'BOM_NEW']}_{df_input.loc[i, 'MCTO_NEW']}_{df_input.loc[i, 'PV_NEW']}"
                 if not os.path.exists(output_folder):
                     log.info(f"Making folder = {output_folder} ...")
                     os.makedirs(output_folder)
                 output_path = f"{output_folder}\\{sPROGRAM_NAME}.{file_ext}"
                 log.info(f"Writing into {output_path}...")
-                with open(f"{output_path}", 'wb') as f:
-                    prstree.write(f, method='xml', xml_declaration=True, encoding='utf-8')
+
+                # Write output .pp and .pp7 files
+                if file_ext.lower() == 'pp' or file_ext.lower() == 'pp7':
+                    log.info('Writing output .pp and .pp7 files...')
+                    with open(f"{output_path}", 'wb') as f:
+                        prstree.write(f, method='xml', xml_declaration=True, encoding='utf-8')
+
+                # Write pp7.zip
+                if file_ext.lower() == 'pp7.zip' and zipfile.is_zipfile(file):
+                    log.info('Writing output .pp7.zip files...')
+                    old_filename_list = [partWas + '.PRT' for partWas in partWasList]
+                    new_filename_list = [partIs + '.PRT' for partIs in partIsList]
+                    data_dict = {}
+                    pp7_in_zip = set()
+                    with zipfile.ZipFile(file, mode='r') as zin:
+                        with zipfile.ZipFile('tmp.zip', mode='w', compression=zipfile.ZIP_DEFLATED) as zout:
+                            zout.comment = zin.comment # preserve the comment
+                            for item in zin.infolist():
+                                if item.filename[-4:].lower() == '.pp7':
+                                    pp7_in_zip.add(item.filename)
+                                elif item.filename not in old_filename_list:
+                                    # write the unchanged file
+                                    zout.writestr(item, zin.read(item.filename))
+                                else:
+                                    # read and replace old to new text
+                                    for n in range(len(old_filename_list)):
+                                        if item.filename.upper() == old_filename_list[n] and partWasList[n].upper() != 'NO PLACE' and partIsList[n].upper() != 'NO PLACE':
+                                            data_dict[new_filename_list[n]] = zin.read(item.filename).decode(encoding='utf-8').replace(partWasList[n], partIsList[n])
+                            zout.close()
+                        zin.close()
+
+                    # replace tmp to new_zip
+                    if os.path.exists(output_path):
+                        delete_file(output_path)
+                    os.rename('tmp.zip', output_path)
+
+                    # write new data to new_zip
+                    with zipfile.ZipFile(output_path, mode='a', compression=zipfile.ZIP_DEFLATED) as zf:
+                        for f, d in data_dict.items():
+                            zf.writestr(f, d)
+                        for pp7 in pp7_in_zip:
+                            zf.write(output_path.replace('.zip', ''), output_path.replace('.zip', '').rsplit('\\', 1)[-1])
+                        zf.close()
 
         except AssertionError as e:
             log.warning(f"{str(e)}")
