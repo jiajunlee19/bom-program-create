@@ -285,12 +285,21 @@ def main(log, path_main, path_590, path_MCTO, path_recipe_bom_master, path_recip
 
     else:
         log.info('Loading SAP database...')
-        from settings import DB_TYPE
-        from db_connection import connect_db
-        connection, conn_response = connect_db(db_type=DB_TYPE)
+        from settings import DB_TYPE, DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD
+        from utils.database import Database
+
+        # Init database
+        database = Database(
+            db_type = DB_TYPE,
+            db_host = DB_HOST,
+            db_database = DB_DATABASE,
+            db_username = DB_USERNAME,
+            db_password = DB_PASSWORD
+        )
+        connection, conn_response = database.connect()
 
         if connection is None:
-            raise ConnectionAbortedError(conn_response)
+            raise ConnectionRefusedError(conn_response)
         
         log.info(conn_response)
         
