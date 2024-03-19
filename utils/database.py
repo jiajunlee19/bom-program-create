@@ -1,4 +1,4 @@
-from Common_Functions_64 import generate_uuid
+from utils.Common_Functions_64 import generate_uuid
 
 class Database:
 
